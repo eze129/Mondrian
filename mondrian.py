@@ -158,6 +158,7 @@ def find_median(partition, dim):
     return (split_val, next_val, value_list[0], value_list[-1])
 
 
+
 def anonymize_strict(partition):
     """
     recursively partition groups until not allowable
@@ -167,41 +168,56 @@ def anonymize_strict(partition):
     if allow_count == 0:
         RESULT.append(partition)
         return
-    for index in range(allow_count):
-        # choose attrubite from domain
-        dim = choose_dimension(partition)
-        if dim == -1:
-            print("Error: dim=-1")
-            pdb.set_trace()
-        (split_val, next_val, low, high) = find_median(partition, dim)
-        # Update parent low and high
-        if low is not '':
-            partition.low[dim] = QI_DICT[dim][low]
-            partition.high[dim] = QI_DICT[dim][high]
-        if split_val == '' or split_val == next_val:
-            # cannot split
-            partition.allow[dim] = 0
-            continue
-        # split the group from median
-        mean = QI_DICT[dim][split_val]
-        lhs_high = partition.high[:]
-        rhs_low = partition.low[:]
-        lhs_high[dim] = mean
-        rhs_low[dim] = QI_DICT[dim][next_val]
-        lhs = Partition([], partition.low, lhs_high)
-        rhs = Partition([], rhs_low, partition.high)
+        
+    for i in range(allow_count):
+        dimension = choose_dimension(partition)
+        if dimension == -1:
+            raise ValueError("无法进行维度分割！")    
+        
+        # use frequency set to get median (*)
+        
+        (split_val,next_val,low,high) = find_median(partition,dimension)
+
+        """
+            if middle < GL_K or len(value_list) <= 1:
+            try:
+                return '', '', value_list[0], value_list[-1]
+            except IndexError:
+                return '', '', '', ''
+        """
+        #(分隔值，下一个值，最低，最高）
+        # update parent low and high (*)
+
+        if low != '':#indexError
+            partition.low[dimension] = QI_DICT[dimension][low]
+            partition.high[dimension] = QI_DICT[dimension][high]
+        if split_val == '':
+            #此时该维度不能分割，进行下一步
+            partition.allow[dimension] = 0
+            continue 
+        # split the group from median (records equal to the mean are stored first) (*)
+
+        #根据split_val
+        mean_val = QI_DICT[dimension][split_val]#中间值
+        lhs_high = partition.high.copy()
+        rhs_low = partition.low.copy()
+        lhs_high[dimension] = mean_val
+        rhs_low[dimension] = QI_DICT[dimension][next_val]
+        (lhs,rhs) = (Partition([],partition.low,lhs_high),Partition([],rhs_low,partition.high))
+        #遍历原分区
         for record in partition.member:
-            pos = QI_DICT[dim][record[dim]]
-            if pos <= mean:
-                # lhs = [low, mean]
-                lhs.add_record(record, dim)
-            else:
-                # rhs = (mean, high]
-                rhs.add_record(record, dim)
-        # check is lhs and rhs satisfy k-anonymity
+            mid = QI_DICT[dimension][record[dimension]]
+            if mid <= mean_val:#小于中间值的全部归于lhs
+                lhs.add_record(record,dimension)
+            else :
+                rhs.add_record(record,dimension)
+
+        # check is lhs and rhs satisfy k-anonymity*
+        
         if len(lhs) < GL_K or len(rhs) < GL_K:
-            partition.allow[dim] = 0
+            partition.allow[dimension] = 0
             continue
+
         # anonymize sub-partition
         anonymize_strict(lhs)
         anonymize_strict(rhs)
@@ -217,60 +233,74 @@ def anonymize_relaxed(partition):
         # can not split
         RESULT.append(partition)
         return
-    # choose attribute from domain
-    dim = choose_dimension(partition)
-    if dim == -1:
-        print("Error: dim=-1")
-        pdb.set_trace()
-    # use frequency set to get median
-    (split_val, next_val, low, high) = find_median(partition, dim)
-    # Update parent low and high
-    if low is not '':
-        partition.low[dim] = QI_DICT[dim][low]
-        partition.high[dim] = QI_DICT[dim][high]
+    # choose attribute from domain (*)
+
+    #print(partition.member[-1])
+    dimension = choose_dimension(partition)
+    if dimension == -1:
+        raise ValueError("无法进行维度分割！")    
+    
+    # use frequency set to get median (*)
+    
+    (split_val,next_val,low,high) = find_median(partition,dimension)
+
+    """
+        if middle < GL_K or len(value_list) <= 1:
+        try:
+            return '', '', value_list[0], value_list[-1]
+        except IndexError:
+            return '', '', '', ''
+    """
+    #(分隔值，下一个值，最低，最高）
+    # update parent low and high (*)
+
+    if low != '': #indexError
+        partition.low[dimension] = QI_DICT[dimension][low]
+        partition.high[dimension] = QI_DICT[dimension][high]
     if split_val == '':
-        # cannot split
-        partition.allow[dim] = 0
+        #此时该维度不能分割，进行下一步
+        partition.allow[dimension] = 0
         anonymize_relaxed(partition)
-        return
-    # split the group from median
-    mean = QI_DICT[dim][split_val]
-    lhs_high = partition.high[:]
-    rhs_low = partition.low[:]
-    lhs_high[dim] = mean
-    rhs_low[dim] = QI_DICT[dim][next_val]
-    lhs = Partition([], partition.low, lhs_high)
-    rhs = Partition([], rhs_low, partition.high)
-    mid_set = []
+        return 
+    
+    # split the group from median (records equal to the mean are stored first) (*)
+
+    #根据split_val
+    mean_val = QI_DICT[dimension][split_val]#中间值
+    lhs_high = partition.high.copy()
+    rhs_low = partition.low.copy()
+    lhs_high[dimension] = mean_val
+    rhs_low[dimension] = QI_DICT[dimension][next_val]
+    (lhs,rhs) = (Partition([],partition.low,lhs_high),Partition([],rhs_low,partition.high))
+    mid_count = 0#中间值的数量
+    #遍历原分区
     for record in partition.member:
-        pos = QI_DICT[dim][record[dim]]
-        if pos < mean:
-            # lhs = [low, mean)
-            lhs.add_record(record, dim)
-        elif pos > mean:
-            # rhs = (mean, high]
-            rhs.add_record(record, dim)
-        else:
-            # mid_set keep the means
-            mid_set.append(record)
-    # handle records in the middle
-    # these records will be divided evenly
-    # between lhs and rhs, such that
-    # |lhs| = |rhs| (+1 if total size is odd)
-    half_size = len(partition) // 2
-    for i in range(half_size - len(lhs)):
-        record = mid_set.pop()
-        lhs.add_record(record, dim)
-    if len(mid_set) > 0:
-        rhs.low[dim] = mean
-        rhs.add_multiple_record(mid_set, dim)
-    # It's not necessary now.
-    # if len(lhs) < GL_K or len(rhs) < GL_K:
-    #     print "Error: split failure"
+        mid = QI_DICT[dimension][record[dimension]]
+        if mid < mean_val:
+            lhs.add_record(record,dimension)
+        elif mid == mean_val:
+            mid_count += 1
+        else :
+            rhs.add_record(record,dimension)
+    # handle records in the middle (*)
+    # these records will be divided evenly between lhs and rhs,
+    # such that |lhs| = |rhs| (+1 if total size is odd)
+    
+    #处理中间记录
+    #对于中间值，采用第二种方法，将中间值平均分分到左右两侧
+    for j in range(len(partition)//2-len(lhs)): 
+        lhs.add_record(mean_val,dimension)
+        mid_count -=1
+    if mid_count > 0:
+        rhs.low[dimension] = mean_val#rhs的最小值更新为中间值
+        for i in range(mid_count):
+            rhs.add_record(mean_val,dimension)
+
+    # check is lhs and rhs satisfy k-anonymity (*)
+
     # anonymize sub-partition
     anonymize_relaxed(lhs)
     anonymize_relaxed(rhs)
-
 
 def init(data, k, QI_num=-1):
     """
