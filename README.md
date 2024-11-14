@@ -82,9 +82,9 @@ Parameters:
 
 	# Evluating Strict Mondrian with k on adult data
 	python anonymizer.py s a k
-###tips
+### tips
 代码中关于`if is not`语法应更新为`if !=`,前者在`py3`后版本不再使用。
-`anonymizer_2.py`与`mondrian_2.py`可以实现对面向数值属性和类别属性，其中类别型值的范围值是没有意义的，例如Male~Female， State-gov~Self-emp-not-inc~Private，通过引入了预定义的泛化层次结构，所有涉及的值都可以转换为其共同祖先中的更一般的值。二者代码来自`USTC `张兰老师《隐私计算》课程。
+`anonymizer_2.py`与`mondrian_2.py`可以实现对面向数值属性和类别属性，其中类别型值的范围值是没有意义的，例如Male~Female， State-gov~Self-emp-not-inc~Private，通过引入了预定义的泛化层次结构，所有涉及的值都可以转换为其共同祖先中的更一般的值。二者代码来自USTC张兰老师《隐私计算》课程。
 
 ### For more information:
 [1] K. LeFevre, D. J. DeWitt, R. Ramakrishnan. Mondrian Multidimensional K-Anonymity ICDE '06: Proceedings of the 22nd International Conference on Data Engineering, IEEE Computer Society, 2006, 25
